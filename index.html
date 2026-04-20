@@ -32,22 +32,8 @@
             align-items: center;
         }
 
-        .vehicle-header {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        
-        .vehicle-img {
-            width: 100%;
-            height: auto;
-            border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            object-fit: cover;
-        }
-
+        .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 20px; }
+        .vehicle-img { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); object-fit: cover; }
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; text-align: center; }
 
         .card {
@@ -62,7 +48,6 @@
         }
 
         .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
-
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
         .data-row:last-child { border-bottom: none; }
         .label { color: var(--text-secondary); font-size: 14px; }
@@ -100,13 +85,9 @@
             font-weight: 600;
             margin-top: 10px;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        .button:active {
-            opacity: 0.8;
-            transform: scale(0.98);
-        }
+        .button:active { opacity: 0.8; transform: scale(0.98); }
 
         .button-secondary {
             background: none;
@@ -142,15 +123,12 @@
         <div class="total-price" id="current-cost">0</div>
         <div style="text-align: center; font-size: 12px; color: var(--text-secondary);">Kč (dle aktuální ceny níže)</div>
         
-        <button class="button" onclick="simulateNewTrip()">Uložit jízdu do historie</button>
+        <button class="button" onclick="saveCurrentTrip()">Uložit jízdu do historie</button>
     </div>
 
     <div class="card">
         <label class="label">Cena za 1 kWh (Kč)</label>
         <input type="number" id="kwh-price" value="6.50" step="0.10" oninput="savePriceAndRefresh()">
-        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;">
-            Nová cena se použije pro budoucí jízdy.
-        </div>
     </div>
 
     <div class="card">
@@ -160,19 +138,34 @@
     </div>
 
     <div class="footer">
-        Data jsou bezpečně uložena v tomto telefonu.<br>
+        Data jsou uložena v tomto telefonu.<br>
         Pro instalaci: Sdílet > Přidat na plochu
     </div>
 
     <script>
-        // Simulovaná data (později nahradíme Tesla API)
-        const liveTeslaData = { km: 31.2, kwh: 5.8, duration: "28 min" };
+        // Objekt pro uchování aktuálně simulovaných dat
+        let liveTeslaData = { km: 0, kwh: 0, duration: "" };
 
         let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
         let savedPrice = localStorage.getItem('teslaPrice') || "6.50";
 
+        // Funkce pro vygenerování náhodné jízdy (vypadá to jako data z auta)
+        function generateRandomLiveTrip() {
+            const km = (Math.random() * 45 + 5).toFixed(1); // 5 až 50 km
+            // Průměrná spotřeba Tesly je cca 0.15 - 0.20 kWh/km
+            const kwh = (km * (Math.random() * 0.05 + 0.15)).toFixed(1); 
+            const mins = Math.floor(km * (Math.random() * 0.5 + 1)); // cca 1-1.5 minuty na km
+            
+            liveTeslaData = {
+                km: km,
+                kwh: kwh,
+                duration: mins + " min"
+            };
+        }
+
         function init() {
             document.getElementById('kwh-price').value = savedPrice;
+            generateRandomLiveTrip(); // Vygeneruj náhodnou jízdu při startu
             updateUI();
         }
 
@@ -186,6 +179,7 @@
             const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
             const historyList = document.getElementById('history-list');
             
+            // Horní karta
             document.getElementById('current-km').innerText = liveTeslaData.km + " km";
             document.getElementById('current-kwh').innerText = liveTeslaData.kwh + " kWh";
             document.getElementById('current-cost').innerText = (liveTeslaData.kwh * currentPrice).toFixed(2);
@@ -216,7 +210,7 @@
             });
         }
 
-        function simulateNewTrip() {
+        function saveCurrentTrip() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('cs-CZ');
             const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
@@ -236,9 +230,10 @@
 
             historyData.unshift(newTrip);
             localStorage.setItem('teslaHistory', JSON.stringify(historyData));
-            updateUI();
             
-            // Alert byl odstraněn pro plynulejší zážitek
+            // Po uložení vygeneruj hned novou simulaci pro příště
+            generateRandomLiveTrip();
+            updateUI();
         }
 
         function clearHistory() {
