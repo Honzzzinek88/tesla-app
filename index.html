@@ -32,8 +32,22 @@
             align-items: center;
         }
 
-        .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 20px; }
-        .vehicle-img { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); object-fit: cover; }
+        .vehicle-header {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .vehicle-img {
+            width: 100%;
+            height: auto;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            object-fit: cover;
+        }
+
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; text-align: center; }
 
         .card {
@@ -48,6 +62,7 @@
         }
 
         .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
+
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
         .data-row:last-child { border-bottom: none; }
         .label { color: var(--text-secondary); font-size: 14px; }
@@ -85,6 +100,12 @@
             font-weight: 600;
             margin-top: 10px;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .button:active {
+            opacity: 0.8;
+            transform: scale(0.98);
         }
 
         .button-secondary {
@@ -139,12 +160,12 @@
     </div>
 
     <div class="footer">
-        Data jsou uložena v tomto telefonu.<br>
+        Data jsou bezpečně uložena v tomto telefonu.<br>
         Pro instalaci: Sdílet > Přidat na plochu
     </div>
 
     <script>
-        // Data z Tesly (v budoucnu nahradíme API)
+        // Simulovaná data (později nahradíme Tesla API)
         const liveTeslaData = { km: 31.2, kwh: 5.8, duration: "28 min" };
 
         let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
@@ -165,7 +186,6 @@
             const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
             const historyList = document.getElementById('history-list');
             
-            // Horní karta - ukazuje odhad ceny pro jízdu, která se právě děje
             document.getElementById('current-km').innerText = liveTeslaData.km + " km";
             document.getElementById('current-kwh').innerText = liveTeslaData.kwh + " kWh";
             document.getElementById('current-cost').innerText = (liveTeslaData.kwh * currentPrice).toFixed(2);
@@ -177,7 +197,6 @@
                 return;
             }
 
-            // Vykreslení historie - každá položka už má svou cenu v sobě
             historyData.forEach((trip) => {
                 const itemHtml = `
                     <div class="history-item">
@@ -203,7 +222,6 @@
             const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
             const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
             
-            // TADY JE TA ZMĚNA: Vypočítáme cenu hned a uložíme ji natvrdo
             const tripCost = (liveTeslaData.kwh * currentPrice).toFixed(2);
 
             const newTrip = {
@@ -212,15 +230,15 @@
                 km: liveTeslaData.km,
                 kwh: liveTeslaData.kwh,
                 duration: liveTeslaData.duration,
-                fixedCost: tripCost, // Toto se už nikdy nezmění
-                usedPrice: currentPrice // Jen pro informaci, za kolik se nabíjelo
+                fixedCost: tripCost,
+                usedPrice: currentPrice
             };
 
             historyData.unshift(newTrip);
             localStorage.setItem('teslaHistory', JSON.stringify(historyData));
             updateUI();
             
-            alert("Jízda byla uložena s cenou " + tripCost + " Kč.");
+            // Alert byl odstraněn pro plynulejší zážitek
         }
 
         function clearHistory() {
