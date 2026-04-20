@@ -32,22 +32,8 @@
             align-items: center;
         }
 
-        .vehicle-header {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        
-        .vehicle-img {
-            width: 100%;
-            height: auto;
-            border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            object-fit: cover;
-        }
-
+        .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 20px; }
+        .vehicle-img { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); object-fit: cover; }
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; text-align: center; }
 
         .card {
@@ -62,7 +48,6 @@
         }
 
         .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
-
         .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
         .data-row:last-child { border-bottom: none; }
         .label { color: var(--text-secondary); font-size: 14px; }
@@ -87,7 +72,7 @@
         .history-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .history-date { font-weight: 700; font-size: 14px; }
         .history-cost { color: var(--tesla-red); font-weight: 700; }
-        .history-details { display: flex; gap: 10px; font-size: 12px; color: var(--text-secondary); }
+        .history-details { display: flex; gap: 10px; font-size: 11px; color: var(--text-secondary); }
 
         .button {
             width: 100%;
@@ -100,7 +85,6 @@
             font-weight: 600;
             margin-top: 10px;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .button-secondary {
@@ -119,30 +103,33 @@
 <body>
 
     <div class="vehicle-header">
-        <img src="tesla_header.webp" alt="Tesla Model 3 Long Range" class="vehicle-img">
+        <img src="tesla_header.webp" alt="Tesla Model 3" class="vehicle-img">
     </div>
 
     <h1>Moje Tesla</h1>
 
     <div class="card">
-        <span class="section-title">Poslední jízda</span>
+        <span class="section-title">Odhad aktuální jízdy</span>
         <div class="data-row">
             <span class="label">Vzdálenost</span>
-            <span class="value" id="current-km">0 km</span>
+            <span class="value" id="current-km">-- km</span>
         </div>
         <div class="data-row">
             <span class="label">Energie</span>
-            <span class="value" id="current-kwh">0 kWh</span>
+            <span class="value" id="current-kwh">-- kWh</span>
         </div>
         <div class="total-price" id="current-cost">0</div>
-        <div style="text-align: center; font-size: 12px; color: var(--text-secondary);">Kč za tuto jízdu</div>
+        <div style="text-align: center; font-size: 12px; color: var(--text-secondary);">Kč (dle aktuální ceny níže)</div>
         
-        <button class="button" onclick="simulateNewTrip()">Simulovat novou jízdu</button>
+        <button class="button" onclick="simulateNewTrip()">Uložit jízdu do historie</button>
     </div>
 
     <div class="card">
         <label class="label">Cena za 1 kWh (Kč)</label>
         <input type="number" id="kwh-price" value="6.50" step="0.10" oninput="savePriceAndRefresh()">
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;">
+            Nová cena se použije pro budoucí jízdy.
+        </div>
     </div>
 
     <div class="card">
@@ -152,11 +139,14 @@
     </div>
 
     <div class="footer">
-        Data jsou bezpečně uložena v tomto telefonu.<br>
+        Data jsou uložena v tomto telefonu.<br>
         Pro instalaci: Sdílet > Přidat na plochu
     </div>
 
     <script>
+        // Data z Tesly (v budoucnu nahradíme API)
+        const liveTeslaData = { km: 31.2, kwh: 5.8, duration: "28 min" };
+
         let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
         let savedPrice = localStorage.getItem('teslaPrice') || "6.50";
 
@@ -172,35 +162,34 @@
         }
 
         function updateUI() {
-            const price = parseFloat(document.getElementById('kwh-price').value) || 0;
+            const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
             const historyList = document.getElementById('history-list');
+            
+            // Horní karta - ukazuje odhad ceny pro jízdu, která se právě děje
+            document.getElementById('current-km').innerText = liveTeslaData.km + " km";
+            document.getElementById('current-kwh').innerText = liveTeslaData.kwh + " kWh";
+            document.getElementById('current-cost').innerText = (liveTeslaData.kwh * currentPrice).toFixed(2);
+
             historyList.innerHTML = "";
 
             if (historyData.length === 0) {
                 historyList.innerHTML = "<div class='label' style='text-align:center; padding: 20px;'>Zatím žádné jízdy</div>";
-                document.getElementById('current-km').innerText = "0 km";
-                document.getElementById('current-kwh').innerText = "0 kWh";
-                document.getElementById('current-cost').innerText = "0";
                 return;
             }
 
-            const lastTrip = historyData[0];
-            document.getElementById('current-km').innerText = lastTrip.km + " km";
-            document.getElementById('current-kwh').innerText = lastTrip.kwh + " kWh";
-            document.getElementById('current-cost').innerText = (lastTrip.kwh * price).toFixed(2);
-
+            // Vykreslení historie - každá položka už má svou cenu v sobě
             historyData.forEach((trip) => {
-                const tripCost = (trip.kwh * price).toFixed(2);
                 const itemHtml = `
                     <div class="history-item">
                         <div class="history-header">
                             <span class="history-date">${trip.date} • ${trip.time}</span>
-                            <span class="history-cost">${tripCost} Kč</span>
+                            <span class="history-cost">${trip.fixedCost} Kč</span>
                         </div>
                         <div class="history-details">
                             <span>${trip.km} km</span>
                             <span>${trip.kwh} kWh</span>
                             <span>${trip.duration}</span>
+                            <span style="color:#ccc">(${trip.usedPrice} Kč/kWh)</span>
                         </div>
                     </div>
                 `;
@@ -212,22 +201,30 @@
             const now = new Date();
             const dateStr = now.toLocaleDateString('cs-CZ');
             const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
+            const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
             
+            // TADY JE TA ZMĚNA: Vypočítáme cenu hned a uložíme ji natvrdo
+            const tripCost = (liveTeslaData.kwh * currentPrice).toFixed(2);
+
             const newTrip = {
                 date: dateStr,
                 time: timeStr,
-                km: (Math.random() * 50 + 5).toFixed(1),
-                kwh: (Math.random() * 10 + 1).toFixed(1),
-                duration: Math.floor(Math.random() * 40 + 10) + " min"
+                km: liveTeslaData.km,
+                kwh: liveTeslaData.kwh,
+                duration: liveTeslaData.duration,
+                fixedCost: tripCost, // Toto se už nikdy nezmění
+                usedPrice: currentPrice // Jen pro informaci, za kolik se nabíjelo
             };
 
             historyData.unshift(newTrip);
             localStorage.setItem('teslaHistory', JSON.stringify(historyData));
             updateUI();
+            
+            alert("Jízda byla uložena s cenou " + tripCost + " Kč.");
         }
 
         function clearHistory() {
-            if (confirm("Opravdu chcete smazat celou historii jízd?")) {
+            if (confirm("Opravdu chcete smazat celou historii?")) {
                 historyData = [];
                 localStorage.removeItem('teslaHistory');
                 updateUI();
