@@ -30,6 +30,7 @@
             align-items: center;
         }
 
+        /* Sekce pro fotku vozidla - nyní v hlavním adresáři */
         .vehicle-header {
             width: 100%;
             max-width: 400px;
@@ -75,6 +76,7 @@
             margin-top: 8px;
             box-sizing: border-box;
             background: #f9f9f9;
+            outline: none;
         }
 
         .total-price { font-size: 42px; font-weight: 800; color: var(--tesla-red); text-align: center; margin: 10px 0; }
@@ -97,6 +99,7 @@
             font-weight: 600;
             margin-top: 10px;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .button-secondary {
@@ -106,6 +109,7 @@
             margin-top: 20px;
             text-decoration: underline;
             border: none;
+            width: 100%;
         }
 
         .footer { font-size: 11px; color: var(--text-secondary); text-align: center; margin-top: 10px; }
@@ -114,7 +118,7 @@
 <body>
 
     <div class="vehicle-header">
-        <img src="images/tesla_header.webp" alt="Tesla Model 3 Long Range" class="vehicle-img">
+        <img src="tesla_header.webp" alt="Tesla Model 3 Long Range" class="vehicle-img">
     </div>
 
     <h1>Moje Tesla</h1>
@@ -147,12 +151,12 @@
     </div>
 
     <div class="footer">
-        Data uložena v tomto telefonu.<br>
+        Data jsou bezpečně uložena v tomto telefonu.<br>
         Pro instalaci: Sdílet > Přidat na plochu
     </div>
 
     <script>
-        // Načtení dat z paměti telefonu při startu
+        // Inicializace dat z paměti telefonu
         let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
         let savedPrice = localStorage.getItem('teslaPrice') || "6.50";
 
@@ -180,13 +184,13 @@
                 return;
             }
 
-            // Poslední jízda je ta první v poli
+            // Aktuální jízda (poslední přidaná)
             const lastTrip = historyData[0];
             document.getElementById('current-km').innerText = lastTrip.km + " km";
             document.getElementById('current-kwh').innerText = lastTrip.kwh + " kWh";
             document.getElementById('current-cost').innerText = (lastTrip.kwh * price).toFixed(2);
 
-            // Vykreslení historie
+            // Výpis historie
             historyData.forEach((trip) => {
                 const tripCost = (trip.kwh * price).toFixed(2);
                 const itemHtml = `
@@ -206,13 +210,12 @@
             });
         }
 
-        // Funkce, kterou později nahradíme voláním Tesla API
+        // Testovací funkce - později nahradíme voláním Tesla API
         function simulateNewTrip() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('cs-CZ');
             const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
             
-            // Náhodná data pro testování
             const newTrip = {
                 date: dateStr,
                 time: timeStr,
@@ -221,17 +224,13 @@
                 duration: Math.floor(Math.random() * 40 + 10) + " min"
             };
 
-            // Přidat na začátek pole
             historyData.unshift(newTrip);
-            
-            // Uložit do paměti telefonu
             localStorage.setItem('teslaHistory', JSON.stringify(historyData));
-            
             updateUI();
         }
 
         function clearHistory() {
-            if (confirm("Opravdu chcete smazat všechna data o jízdách?")) {
+            if (confirm("Opravdu chcete smazat celou historii jízd?")) {
                 historyData = [];
                 localStorage.removeItem('teslaHistory');
                 updateUI();
