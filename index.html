@@ -2,14 +2,13 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tesla Trip Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tesla Trip Pro Scan</title>
     
-    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Tesla Spotřeba">
     
     <style>
         :root {
@@ -32,10 +31,6 @@
             align-items: center;
         }
 
-        .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 20px; }
-        .vehicle-img { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); object-fit: cover; }
-        h1 { font-size: 24px; font-weight: 700; margin: 15px 0; text-align: center; }
-
         .card {
             background: var(--apple-card);
             border-radius: 15px;
@@ -47,197 +42,237 @@
             box-sizing: border-box;
         }
 
-        .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
-        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
-        .data-row:last-child { border-bottom: none; }
-        .label { color: var(--text-secondary); font-size: 14px; }
-        .value { font-weight: 600; font-size: 16px; }
-
-        input[type="number"] {
-            width: 100%;
-            border: 1px solid var(--separator);
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 18px;
-            margin-top: 8px;
-            box-sizing: border-box;
-            background: #f9f9f9;
-            outline: none;
-        }
-
         .total-price { font-size: 42px; font-weight: 800; color: var(--tesla-red); text-align: center; margin: 10px 0; }
-
-        .history-item { padding: 12px 0; border-bottom: 1px solid var(--separator); }
-        .history-item:last-child { border-bottom: none; }
-        .history-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .history-date { font-weight: 700; font-size: 14px; }
-        .history-cost { color: var(--tesla-red); font-weight: 700; }
-        .history-details { display: flex; gap: 10px; font-size: 11px; color: var(--text-secondary); }
+        .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
+        
+        /* Scanner UI */
+        #scanner-container {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        #video-preview { width: 100%; height: 70%; object-fit: cover; }
+        .scanner-overlay {
+            position: absolute;
+            top: 10%; left: 5%; width: 90%; height: 50%;
+            border: 2px solid var(--tesla-red);
+            border-radius: 10px;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
+        }
+        .scanner-info {
+            color: white; padding: 20px; text-align: center; font-size: 14px;
+        }
 
         .button {
-            width: 100%;
-            background: var(--text-main);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 10px;
-            cursor: pointer;
+            width: 100%; background: var(--text-main); color: white;
+            border: none; border-radius: 12px; padding: 15px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+        }
+        .button-scan { background: var(--tesla-red); margin-bottom: 10px; }
+        
+        .history-item { padding: 12px 0; border-bottom: 1px solid var(--separator); }
+        .history-header { display: flex; justify-content: space-between; }
+        .history-cost { color: var(--tesla-red); font-weight: 700; }
+        .history-details { display: flex; gap: 10px; font-size: 11px; color: var(--text-secondary); }
+        
+        input[type="number"] {
+            width: 100%; border: 1px solid var(--separator); border-radius: 10px;
+            padding: 12px; font-size: 18px; box-sizing: border-box; background: #f9f9f9;
         }
 
-        .button:active { opacity: 0.8; transform: scale(0.98); }
-
-        .button-secondary {
-            background: none;
-            color: var(--text-secondary);
-            font-size: 13px;
-            margin-top: 20px;
-            text-decoration: underline;
-            border: none;
-            width: 100%;
-        }
-
-        .footer { font-size: 11px; color: var(--text-secondary); text-align: center; margin-top: 10px; }
+        #status-msg { font-size: 12px; color: var(--tesla-red); text-align: center; margin-top: 5px; min-height: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="vehicle-header">
-        <img src="tesla_header.webp" alt="Tesla Model 3" class="vehicle-img">
-    </div>
-
-    <h1>Moje Tesla</h1>
+    <h1 style="margin-top:20px;">Tesla Trip Pro</h1>
 
     <div class="card">
-        <span class="section-title">Odhad aktuální jízdy</span>
-        <div class="data-row">
-            <span class="label">Vzdálenost</span>
-            <span class="value" id="current-km">-- km</span>
-        </div>
-        <div class="data-row">
-            <span class="label">Energie</span>
-            <span class="value" id="current-kwh">-- kWh</span>
-        </div>
-        <div class="total-price" id="current-cost">0</div>
-        <div style="text-align: center; font-size: 12px; color: var(--text-secondary);">Kč (dle aktuální ceny níže)</div>
+        <span class="section-title">Nová jízda</span>
+        <button class="button button-scan" onclick="startScanner()">📷 NASKENOVAT DISPLEJ</button>
+        <div id="status-msg"></div>
         
-        <button class="button" onclick="saveCurrentTrip()">Uložit jízdu do historie</button>
+        <div style="display:flex; justify-content: space-between; margin-top: 15px;">
+            <div style="text-align:center">
+                <div class="label" style="font-size: 12px; color: var(--text-secondary);">Vzdálenost</div>
+                <div class="value" id="current-km" style="font-size: 18px; font-weight: 700;">-- km</div>
+            </div>
+            <div style="text-align:center">
+                <div class="label" style="font-size: 12px; color: var(--text-secondary);">Energie</div>
+                <div class="value" id="current-kwh" style="font-size: 18px; font-weight: 700;">-- kWh</div>
+            </div>
+        </div>
+        
+        <div class="total-price" id="current-cost">0.00</div>
+        <div style="text-align: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Kč za tuto jízdu</div>
     </div>
 
     <div class="card">
-        <label class="label">Cena za 1 kWh (Kč)</label>
+        <label class="label" style="font-size: 14px; color: var(--text-secondary);">Cena za 1 kWh (Kč)</label>
         <input type="number" id="kwh-price" value="6.50" step="0.10" oninput="savePriceAndRefresh()">
     </div>
 
     <div class="card">
         <span class="section-title">Historie jízd</span>
         <div id="history-list"></div>
-        <button class="button-secondary" onclick="clearHistory()">Smazat celou historii</button>
+        <button style="background:none; border:none; color:var(--text-secondary); width:100%; margin-top:15px; text-decoration:underline;" onclick="clearHistory()">Smazat historii</button>
     </div>
 
-    <div class="footer">
-        Data jsou uložena v tomto telefonu.<br>
-        Pro instalaci: Sdílet > Přidat na plochu
+    <div id="scanner-container">
+        <video id="video-preview" autoplay playsinline></video>
+        <div class="scanner-overlay"></div>
+        <div class="scanner-info">
+            <p>Zaměřte levý sloupec <b>"Aktuální jíz..."</b></p>
+            <p id="ocr-status">Inicializace skeneru...</p>
+            <button class="button" style="background:#444; width: auto; padding: 10px 30px;" onclick="stopScanner()">Zrušit</button>
+        </div>
+        <canvas id="capture-canvas" style="display:none;"></canvas>
     </div>
 
     <script>
-        // Objekt pro uchování aktuálně simulovaných dat
-        let liveTeslaData = { km: 0, kwh: 0, duration: "" };
-
         let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
         let savedPrice = localStorage.getItem('teslaPrice') || "6.50";
-
-        // Funkce pro vygenerování náhodné jízdy (vypadá to jako data z auta)
-        function generateRandomLiveTrip() {
-            const km = (Math.random() * 45 + 5).toFixed(1); // 5 až 50 km
-            // Průměrná spotřeba Tesly je cca 0.15 - 0.20 kWh/km
-            const kwh = (km * (Math.random() * 0.05 + 0.15)).toFixed(1); 
-            const mins = Math.floor(km * (Math.random() * 0.5 + 1)); // cca 1-1.5 minuty na km
-            
-            liveTeslaData = {
-                km: km,
-                kwh: kwh,
-                duration: mins + " min"
-            };
-        }
+        let stream = null;
+        let isScanning = false;
+        let lastScannedData = { km: 0, kwh: 0 };
 
         function init() {
             document.getElementById('kwh-price').value = savedPrice;
-            generateRandomLiveTrip(); // Vygeneruj náhodnou jízdu při startu
             updateUI();
         }
 
+        // --- SKENER LOGIKA ---
+
+        async function startScanner() {
+            const container = document.getElementById('scanner-container');
+            const video = document.getElementById('video-preview');
+            const status = document.getElementById('ocr-status');
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment", width: { ideal: 1280 } } 
+                });
+                video.srcObject = stream;
+                container.style.display = 'flex';
+                isScanning = true;
+                status.innerText = "Hledám data na displeji...";
+                scanLoop();
+            } catch (err) {
+                alert("Nelze přistoupit k fotoaparátu. Zkontrolujte oprávnění.");
+            }
+        }
+
+        function stopScanner() {
+            isScanning = false;
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            document.getElementById('scanner-container').style.display = 'none';
+        }
+
+        async function scanLoop() {
+            if (!isScanning) return;
+
+            const video = document.getElementById('video-preview');
+            const canvas = document.getElementById('capture-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Vyfocení snímku z videa
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // OCR zpracování
+            const result = await Tesseract.recognize(canvas, 'eng');
+            parseTeslaText(result.data.text);
+
+            if (isScanning) {
+                setTimeout(scanLoop, 1000); // Skenovat každou sekundu
+            }
+        }
+
+        function parseTeslaText(text) {
+            console.log("OCR výstup:", text);
+            const status = document.getElementById('ocr-status');
+            
+            // Vyčištění textu - Tesla používá čárky jako desetinné oddělovače v češtině
+            const cleanText = text.replace(',', '.');
+            
+            // Hledání km a kWh pomocí regulárních výrazů
+            const kmMatch = cleanText.match(/(\d+\.?\d*)\s*km/i);
+            const kwhMatch = cleanText.match(/(\d+\.?\d*)\s*kwh/i);
+
+            if (kmMatch) lastScannedData.km = parseFloat(kmMatch[1]);
+            if (kwhMatch) lastScannedData.kwh = parseFloat(kwhMatch[1]);
+
+            status.innerText = `Nalezeno: ${lastScannedData.km} km, ${lastScannedData.kwh} kWh`;
+
+            // Pokud máme obě hodnoty, uložíme a končíme
+            if (lastScannedData.km > 0 && lastScannedData.kwh > 0) {
+                stopScanner();
+                document.getElementById('current-km').innerText = lastScannedData.km + " km";
+                document.getElementById('current-kwh').innerText = lastScannedData.kwh + " kWh";
+                saveCurrentTrip();
+            }
+        }
+
+        // --- HISTORIE A UI ---
+
         function savePriceAndRefresh() {
-            const price = document.getElementById('kwh-price').value;
-            localStorage.setItem('teslaPrice', price);
+            savedPrice = document.getElementById('kwh-price').value;
+            localStorage.setItem('teslaPrice', savedPrice);
             updateUI();
         }
 
         function updateUI() {
-            const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
+            const currentPrice = parseFloat(savedPrice) || 0;
             const historyList = document.getElementById('history-list');
             
-            // Horní karta
-            document.getElementById('current-km').innerText = liveTeslaData.km + " km";
-            document.getElementById('current-kwh').innerText = liveTeslaData.kwh + " kWh";
-            document.getElementById('current-cost').innerText = (liveTeslaData.kwh * currentPrice).toFixed(2);
+            document.getElementById('current-cost').innerText = (lastScannedData.kwh * currentPrice).toFixed(2);
 
-            historyList.innerHTML = "";
-
-            if (historyData.length === 0) {
-                historyList.innerHTML = "<div class='label' style='text-align:center; padding: 20px;'>Zatím žádné jízdy</div>";
-                return;
-            }
+            historyList.innerHTML = historyData.length === 0 ? 
+                "<div style='text-align:center; color:gray; padding:10px;'>Žádná historie</div>" : "";
 
             historyData.forEach((trip) => {
-                const itemHtml = `
+                historyList.innerHTML += `
                     <div class="history-item">
                         <div class="history-header">
-                            <span class="history-date">${trip.date} • ${trip.time}</span>
+                            <span style="font-size:12px; font-weight:bold;">${trip.date} v ${trip.time}</span>
                             <span class="history-cost">${trip.fixedCost} Kč</span>
                         </div>
                         <div class="history-details">
-                            <span>${trip.km} km</span>
-                            <span>${trip.kwh} kWh</span>
-                            <span>${trip.duration}</span>
-                            <span style="color:#ccc">(${trip.usedPrice} Kč/kWh)</span>
+                            <span>${trip.km} km</span> • <span>${trip.kwh} kWh</span> • <span>${trip.usedPrice} Kč/kWh</span>
                         </div>
                     </div>
                 `;
-                historyList.innerHTML += itemHtml;
             });
         }
 
         function saveCurrentTrip() {
             const now = new Date();
-            const dateStr = now.toLocaleDateString('cs-CZ');
-            const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
-            const currentPrice = parseFloat(document.getElementById('kwh-price').value) || 0;
-            
-            const tripCost = (liveTeslaData.kwh * currentPrice).toFixed(2);
+            const currentPrice = parseFloat(savedPrice) || 0;
+            const tripCost = (lastScannedData.kwh * currentPrice).toFixed(2);
 
             const newTrip = {
-                date: dateStr,
-                time: timeStr,
-                km: liveTeslaData.km,
-                kwh: liveTeslaData.kwh,
-                duration: liveTeslaData.duration,
+                date: now.toLocaleDateString('cs-CZ'),
+                time: now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0'),
+                km: lastScannedData.km,
+                kwh: lastScannedData.kwh,
                 fixedCost: tripCost,
                 usedPrice: currentPrice
             };
 
             historyData.unshift(newTrip);
             localStorage.setItem('teslaHistory', JSON.stringify(historyData));
-            
-            // Po uložení vygeneruj hned novou simulaci pro příště
-            generateRandomLiveTrip();
             updateUI();
+            
+            document.getElementById('status-msg').innerText = "Jízda byla automaticky uložena!";
+            setTimeout(() => { document.getElementById('status-msg').innerText = ""; }, 3000);
         }
 
         function clearHistory() {
-            if (confirm("Opravdu chcete smazat celou historii?")) {
+            if (confirm("Smazat vše?")) {
                 historyData = [];
                 localStorage.removeItem('teslaHistory');
                 updateUI();
