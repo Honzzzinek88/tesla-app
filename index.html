@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tesla Trip Pro Scan</title>
+    <title>Tesla Trip Pro v1.36</title>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -27,9 +27,7 @@
             color: var(--text-main);
             margin: 0;
             padding: env(safe-area-inset-top) 15px 40px 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
         }
 
         .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 20px; }
@@ -38,14 +36,9 @@
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; }
 
         .card {
-            background: var(--apple-card);
-            border-radius: 15px;
-            padding: 18px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-            margin-bottom: 20px;
-            box-sizing: border-box;
+            background: var(--apple-card); border-radius: 15px; padding: 18px;
+            width: 100%; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            margin-bottom: 20px; box-sizing: border-box;
         }
 
         .section-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; display: block; }
@@ -58,36 +51,40 @@
         }
         .button-scan { background: var(--tesla-red); margin-bottom: 10px; }
 
-        /* Scanner UI */
+        /* SCANNER UI */
         #scanner-container {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: black;
-            z-index: 1000;
-            flex-direction: column;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 1000; flex-direction: column;
         }
-        #video-preview { width: 100%; height: 60%; object-fit: cover; }
+        #video-preview { width: 100%; height: 65%; object-fit: cover; }
+        
         .scanner-overlay {
-            position: absolute;
-            top: 10%; left: 5%; width: 90%; height: 35%;
-            border: 2px solid var(--tesla-red);
-            border-radius: 10px;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.7);
+            position: absolute; top: 10%; left: 5%; width: 90%; height: 35%;
+            border: 2px solid rgba(255,255,255,0.4); border-radius: 10px;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.7); overflow: hidden;
         }
+
+        /* Červená skenovací čára */
+        .scan-line {
+            width: 100%; height: 3px; background: var(--tesla-red);
+            position: absolute; top: 0;
+            animation: scanLineAnim 2s infinite linear;
+            box-shadow: 0 0 15px var(--tesla-red);
+        }
+
+        @keyframes scanLineAnim {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
         .scanner-info { color: white; padding: 15px; text-align: center; }
         
-        /* Debug okno pro OCR */
         #debug-ocr {
-            background: rgba(255,255,255,0.1);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 10px;
-            padding: 5px;
-            height: 40px;
-            overflow: hidden;
-            margin-top: 5px;
-            border-radius: 5px;
+            background: rgba(255,255,255,0.1); color: #0f0;
+            font-family: monospace; font-size: 11px; padding: 5px;
+            height: 50px; overflow-y: auto; margin-top: 5px; border-radius: 5px;
+            border: 1px solid rgba(0,255,0,0.2);
         }
 
         .history-item { padding: 12px 0; border-bottom: 1px solid var(--separator); }
@@ -111,8 +108,8 @@
 
     <div class="card">
         <span class="section-title">Nová jízda</span>
-        <button class="button button-scan" onclick="startScanner()">📷 NASKENOVAT DISPLEJ</button>
-        <div id="status-msg" style="text-align:center; color:var(--tesla-red); font-weight:600; margin-top:5px; height:20px;"></div>
+        <button class="button button-scan" onclick="startScanner()">📷 SPUSTIT SKENER</button>
+        <div id="status-msg" style="text-align:center; color:var(--tesla-red); font-size:13px; font-weight:600; margin-top:5px; min-height:20px;"></div>
         
         <div style="display:flex; justify-content: space-around; margin-top: 10px;">
             <div style="text-align:center">
@@ -125,6 +122,7 @@
             </div>
         </div>
         <div class="total-price" id="current-cost">0.00</div>
+        <div style="text-align:center; font-size:12px; color:var(--text-secondary);">Kč (automaticky po skenu)</div>
     </div>
 
     <div class="card">
@@ -140,11 +138,12 @@
 
     <div id="scanner-container">
         <video id="video-preview" autoplay playsinline></video>
-        <div class="scanner-overlay"></div>
+        <div class="scanner-overlay">
+            <div class="scan-line"></div>
+        </div>
         <div class="scanner-info">
-            <p style="margin:0; font-weight:bold;">Zamiřte na "Aktuální jízda"</p>
-            <div id="ocr-status" style="font-size:12px; color:#aaa; margin-top:5px;">Inicializace...</div>
-            <div id="debug-ocr">Čekám na text...</div>
+            <p id="ocr-main-status" style="margin:0; font-weight:bold; color:var(--tesla-red);">Připravuji skener...</p>
+            <div id="debug-ocr">Čekám na první snímek...</div>
             <button class="button" style="background:#333; width: auto; padding: 10px 40px; margin-top:10px;" onclick="stopScanner()">Zrušit</button>
         </div>
         <canvas id="capture-canvas" style="display:none;"></canvas>
@@ -156,11 +155,18 @@
         let stream = null;
         let isScanning = false;
         let worker = null;
+        let scanAttempt = 0;
 
-        // Inicializace OCR Workera při startu (šetří čas při spuštění kamery)
+        // Inicializace OCR Workera
         async function initOCR() {
-            worker = await Tesseract.createWorker('eng');
-            document.getElementById('ocr-status').innerText = "Skener připraven";
+            try {
+                document.getElementById('status-msg').innerText = "Načítám skener...";
+                worker = await Tesseract.createWorker('eng');
+                document.getElementById('status-msg').innerText = "Skener připraven ✅";
+            } catch (e) {
+                document.getElementById('status-msg').innerText = "Chyba načítání OCR.";
+                console.error(e);
+            }
         }
 
         function init() {
@@ -170,6 +176,8 @@
         }
 
         async function startScanner() {
+            if (!worker) { alert("Skener se ještě načítá, prosím vteřinu."); return; }
+            
             const container = document.getElementById('scanner-container');
             const video = document.getElementById('video-preview');
 
@@ -180,9 +188,10 @@
                 video.srcObject = stream;
                 container.style.display = 'flex';
                 isScanning = true;
+                scanAttempt = 0;
                 scanLoop();
             } catch (err) {
-                alert("Kamera není dostupná.");
+                alert("Nepodařilo se spustit kameru.");
             }
         }
 
@@ -199,58 +208,54 @@
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-            canvas.width = 640; // Menší rozlišení pro rychlejší OCR
-            canvas.height = (video.videoHeight / video.videoWidth) * 640;
-            
-            // Nakreslení obrazu
+            // Zmenšení pro rychlost, ale zachování čitelnosti
+            canvas.width = 600;
+            canvas.height = (video.videoHeight / video.videoWidth) * 600;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // --- ÚPRAVA OBRAZU PRO LEPŠÍ ČTENÍ ---
+            // --- PŘEDZPRACOVÁNÍ (Černobílá + Kontrast) ---
             let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let data = imgData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                // Zvýšení kontrastu (prahování)
-                let v = (avg > 120) ? 255 : 0; 
-                data[i] = data[i + 1] = data[i + 2] = v;
+            let d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                let avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+                let v = (avg > 110) ? 255 : 0; // Prahování pro jasný text
+                d[i] = d[i + 1] = d[i + 2] = v;
             }
             ctx.putImageData(imgData, 0, 0);
+
+            scanAttempt++;
+            document.getElementById('ocr-main-status').innerText = `Skenuji (pokus č. ${scanAttempt})...`;
 
             try {
                 const { data: { text } } = await worker.recognize(canvas);
                 processText(text);
             } catch (e) { console.error(e); }
 
-            if (isScanning) setTimeout(scanLoop, 500);
+            if (isScanning) setTimeout(scanLoop, 800);
         }
 
         function processText(text) {
             const debug = document.getElementById('debug-ocr');
-            const status = document.getElementById('ocr-status');
-            
-            // Vyčištění a zobrazení v debug okně
+            // Vyčištění textu pro analýzu
             const cleanText = text.toLowerCase().replace(',', '.').replace(/\s/g, ' ');
-            debug.innerText = cleanText;
+            debug.innerText = `Vidím: ${cleanText}`;
 
-            const kmMatch = cleanText.match(/(\d+\.?\d*)\s*km/);
-            const kwhMatch = cleanText.match(/(\d+\.?\d*)\s*kwh/);
+            // Robustnější Regex: hledá číslo a pak jednotku (km / kwh)
+            const kmMatch = cleanText.match(/(\d+[.]?\d*)\s*km/);
+            const kwhMatch = cleanText.match(/(\d+[.]?\d*)\s*kwh/);
 
-            let foundKm = kmMatch ? parseFloat(kmMatch[1]) : null;
-            let foundKwh = kwhMatch ? parseFloat(kwhMatch[1]) : null;
+            let km = kmMatch ? parseFloat(kmMatch[1]) : null;
+            let kwh = kwhMatch ? parseFloat(kwhMatch[1]) : null;
 
-            if (foundKm || foundKwh) {
-                status.innerText = `Detekce: ${foundKm || '?'} km | ${foundKwh || '?'} kWh`;
-            }
-
-            if (foundKm > 0 && foundKwh > 0) {
+            if (km > 0 && kwh > 0) {
                 stopScanner();
-                saveTrip(foundKm, foundKwh);
+                saveTrip(km, kwh);
             }
         }
 
         function saveTrip(km, kwh) {
             const now = new Date();
-            const price = parseFloat(savedPrice) || 0;
+            const price = parseFloat(document.getElementById('kwh-price').value) || 0;
             const cost = (kwh * price).toFixed(2);
 
             const entry = {
@@ -268,7 +273,7 @@
             
             updateUI();
             document.getElementById('status-msg').innerText = "✅ Jízda uložena!";
-            setTimeout(() => { document.getElementById('status-msg').innerText = ""; }, 3000);
+            setTimeout(() => { document.getElementById('status-msg').innerText = ""; }, 4000);
         }
 
         function savePriceAndRefresh() {
@@ -284,7 +289,7 @@
                 list.innerHTML += `
                     <div class="history-item">
                         <div class="history-header">
-                            <span class="history-date">${t.date} ${t.time}</span>
+                            <span style="font-weight:bold; font-size:12px;">${t.date} ${t.time}</span>
                             <span class="history-cost">${t.cost} Kč</span>
                         </div>
                         <div class="history-details">${t.km} km • ${t.kwh} kWh • ${t.pricePerUnit} Kč/kWh</div>
@@ -293,7 +298,7 @@
         }
 
         function clearHistory() {
-            if (confirm("Smazat vše?")) {
+            if (confirm("Smazat všechnu historii?")) {
                 historyData = [];
                 localStorage.removeItem('teslaHistory');
                 updateUI();
