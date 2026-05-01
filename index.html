@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Car Trip Pro v1.44</title>
+    <title>Car Trip Pro v1.45</title>
 
+    <!-- PWA Instalace a Mobilní nastavení -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="tesla_header.webp">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Car Trip">
+    <meta name="theme-color" content="#e82127">
 
     <style>
         :root {
@@ -37,6 +41,7 @@
             width: 100%; height: auto; border-radius: 20px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s;
         }
+        .vehicle-header:active .vehicle-img { transform: scale(0.96); }
 
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; }
 
@@ -53,18 +58,19 @@
         input {
             width: 100%; border: 1px solid var(--separator); border-radius: 10px;
             padding: 12px; font-size: 17px; box-sizing: border-box; background: #f9f9f9;
-            outline: none;
+            outline: none; transition: border-color 0.2s;
         }
 
-        /* Barvy pro texty v historii - nezávislé na režimu body */
         .color-ev { color: var(--tesla-red) !important; }
         .color-ice { color: var(--skoda-green) !important; }
 
-        /* Dynamické barvy pro aktivní kartu zadávání */
         .mode-ev .accent-color { color: var(--tesla-red); }
         .mode-ev .button { background: var(--tesla-red); }
+        .mode-ev input:focus { border-color: var(--tesla-red); }
+
         .mode-ice .accent-color { color: var(--skoda-green); }
         .mode-ice .button { background: var(--skoda-green); }
+        .mode-ice input:focus { border-color: var(--skoda-green); }
 
         .button {
             width: 100%; color: white; border: none; border-radius: 12px; 
@@ -75,7 +81,6 @@
         .total-price { font-size: 42px; font-weight: 800; line-height: 1; }
         .sub-preview { font-size: 14px; font-weight: 600; margin-top: 5px; }
 
-        /* HISTORIE */
         .history-item { 
             padding: 12px 0; border-bottom: 1px solid var(--separator); 
             display: flex; justify-content: space-between; align-items: center;
@@ -86,6 +91,17 @@
         .h-cost { font-weight: 800; font-size: 16px; }
         .mode-label { font-weight: 800; font-size: 10px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; border: 1px solid currentColor; }
     </style>
+
+    <script>
+        // Registrace Service Workeru pro instalaci PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed', err));
+            });
+        }
+    </script>
 </head>
 <body class="mode-ev" id="main-body">
 

@@ -1,14 +1,22 @@
 {
-  "name": "Tesla Trip Pro",
-  "short_name": "Tesla",
+  "name": "Car Trip Pro",
+  "short_name": "CarTrip",
+  "description": "Sledování nákladů na jízdu pro Tesla a spalovací auta",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f2f2f7",
   "theme_color": "#e82127",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "tesla_header.webp",
       "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "tesla_header.webp",
+      "sizes": "192x192",
       "type": "image/webp"
     }
   ]
