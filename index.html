@@ -3,255 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tesla Trip Pro v1.38</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <title>Car Trip Pro v1.44</title>
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Car Trip">
 
     <style>
         :root {
             --apple-bg: #f2f2f7;
             --apple-card: #ffffff;
             --tesla-red: #e82127;
+            --skoda-green: #00aa44;
             --text-main: #1c1c1e;
             --text-secondary: #8e8e93;
+            --separator: #e5e5ea;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--apple-bg);
+            color: var(--text-main);
             margin: 0;
             padding: env(safe-area-inset-top) 15px 40px 15px;
             display: flex; flex-direction: column; align-items: center;
         }
 
+        .vehicle-header { 
+            width: 100%; max-width: 400px; display: flex; justify-content: center; 
+            margin-top: 10px; cursor: pointer;
+        }
+        .vehicle-img { 
+            width: 100%; height: auto; border-radius: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s;
+        }
+
+        h1 { font-size: 24px; font-weight: 700; margin: 15px 0; }
+
         .card {
             background: var(--apple-card); border-radius: 15px; padding: 18px;
             width: 100%; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-            margin-bottom: 20px; box-sizing: border-box;
+            margin-bottom: 15px; box-sizing: border-box;
         }
+
+        .section-title { font-weight: 700; font-size: 17px; margin-bottom: 15px; display: block; }
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 5px; }
+        
+        input {
+            width: 100%; border: 1px solid var(--separator); border-radius: 10px;
+            padding: 12px; font-size: 17px; box-sizing: border-box; background: #f9f9f9;
+            outline: none;
+        }
+
+        /* Barvy pro texty v historii - nezávislé na režimu body */
+        .color-ev { color: var(--tesla-red) !important; }
+        .color-ice { color: var(--skoda-green) !important; }
+
+        /* Dynamické barvy pro aktivní kartu zadávání */
+        .mode-ev .accent-color { color: var(--tesla-red); }
+        .mode-ev .button { background: var(--tesla-red); }
+        .mode-ice .accent-color { color: var(--skoda-green); }
+        .mode-ice .button { background: var(--skoda-green); }
 
         .button {
-            width: 100%; background: var(--text-main); color: white;
-            border: none; border-radius: 12px; padding: 15px;
-            font-size: 16px; font-weight: 600; cursor: pointer;
+            width: 100%; color: white; border: none; border-radius: 12px; 
+            padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer;
         }
 
-        /* SCANNER UI */
-        #scanner-container {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 1000; flex-direction: column;
-        }
-        #video-preview { width: 100%; height: 60%; object-fit: cover; }
-        
-        /* Úzký výřez pro cílené skenování jednoho sloupce */
-        .scanner-overlay {
-            position: absolute; top: 20%; left: 10%; width: 50%; height: 25%;
-            border: 2px solid var(--tesla-red); border-radius: 8px;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.8); overflow: hidden;
-        }
+        .result-preview { text-align: center; margin: 15px 0; padding-top: 10px; border-top: 1px solid var(--separator); }
+        .total-price { font-size: 42px; font-weight: 800; line-height: 1; }
+        .sub-preview { font-size: 14px; font-weight: 600; margin-top: 5px; }
 
-        .scan-line {
-            width: 100%; height: 2px; background: var(--tesla-red);
-            position: absolute; top: 0; animation: scanLineAnim 1.5s infinite linear;
+        /* HISTORIE */
+        .history-item { 
+            padding: 12px 0; border-bottom: 1px solid var(--separator); 
+            display: flex; justify-content: space-between; align-items: center;
         }
-
-        @keyframes scanLineAnim { 0% { top: 0%; } 100% { top: 100%; } }
-
-        #debug-ocr {
-            background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 12px;
-            padding: 10px; height: 80px; overflow-y: auto; margin-top: 10px; border-radius: 8px;
-            border: 1px solid #333;
-        }
-
-        .total-price { font-size: 42px; font-weight: 800; color: var(--tesla-red); text-align: center; }
+        .h-main { font-weight: 600; font-size: 15px; }
+        .h-sub { font-size: 11px; color: var(--text-secondary); }
+        .h-right { text-align: right; }
+        .h-cost { font-weight: 800; font-size: 16px; }
+        .mode-label { font-weight: 800; font-size: 10px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; border: 1px solid currentColor; }
     </style>
 </head>
-<body>
+<body class="mode-ev" id="main-body">
 
-    <div style="width:100%; max-width:400px; margin-top:20px;">
-        <img src="tesla_header.webp" style="width:100%; border-radius:20px;" alt="Tesla">
+    <div class="vehicle-header" onclick="toggleMode()">
+        <img src="tesla_header.webp" id="car-img" alt="Auto" class="vehicle-img">
     </div>
 
-    <h1>Tesla Trip Pro</h1>
+    <h1 id="app-title">Moje Tesla</h1>
 
     <div class="card">
-        <button class="button" style="background:var(--tesla-red)" onclick="startScanner()">📷 NASKENOVAT JÍZDU</button>
-        <div id="status-msg" style="text-align:center; color:var(--tesla-red); font-size:13px; margin-top:8px; font-weight:bold;"></div>
+        <span class="section-title">Nová jízda</span>
         
-        <div style="display:flex; justify-content: space-around; margin-top: 15px;">
-            <div style="text-align:center">
-                <div style="font-size:12px; color:var(--text-secondary);">Vzdálenost</div>
-                <div id="current-km" style="font-size:18px; font-weight:700;">-- km</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="input-group">
+                <label>Vzdálenost (km)</label>
+                <input type="number" id="input-km" placeholder="0.0" oninput="calculate()">
             </div>
-            <div style="text-align:center">
-                <div style="font-size:12px; color:var(--text-secondary);">Energie</div>
-                <div id="current-kwh" style="font-size:18px; font-weight:700;">-- kWh</div>
+            <div class="input-group">
+                <label id="label-consumption">Energie (kWh)</label>
+                <input type="number" id="input-main" placeholder="0.0" oninput="calculate()">
             </div>
         </div>
-        <div class="total-price" id="current-cost">0.00</div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="input-group">
+                <label>Doba jízdy</label>
+                <input type="text" id="input-time" placeholder="např. 25 min">
+            </div>
+            <div class="input-group" id="speed-group" style="display:none;">
+                <label>Prům. rychlost (km/h)</label>
+                <input type="number" id="input-speed" placeholder="0">
+            </div>
+        </div>
+
+        <div class="result-preview">
+            <div class="total-price accent-color" id="preview-cost">0.00 Kč</div>
+            <div id="preview-per-km" class="sub-preview">0.00 Kč / km</div>
+        </div>
+
+        <button class="button" onclick="saveTrip()">ULOŽIT JÍZDU</button>
     </div>
 
     <div class="card">
-        <label style="font-size:14px; color:var(--text-secondary);">Cena za 1 kWh (Kč)</label>
-        <input type="number" id="kwh-price" step="0.1" style="width:100%; padding:12px; border-radius:10px; border:1px solid #ddd; margin-top:5px; font-size:16px;">
+        <label id="label-price" style="font-size: 13px; color: var(--text-secondary);">Cena za jednotku (Kč)</label>
+        <input type="number" id="unit-price" step="0.1" oninput="saveSettings()" style="margin-top:5px;">
     </div>
 
     <div class="card">
-        <span style="font-weight:bold;">Historie jízd</span>
-        <div id="history-list" style="margin-top:10px;"></div>
-    </div>
-
-    <div id="scanner-container">
-        <video id="video-preview" autoplay playsinline muted></video>
-        <div class="scanner-overlay"><div class="scan-line"></div></div>
-        <div style="color:white; padding:15px; text-align:center;">
-            <p style="margin:0; font-weight:bold;">ZABERTE POUZE LEVÝ SLOUPEC</p>
-            <div id="ocr-status" style="font-size:12px; color:var(--tesla-red); margin: 5px 0;">Inicializace...</div>
-            <div id="debug-ocr">Čekám na data...</div>
-            <button class="button" style="background:#333; margin-top:10px; width:auto; padding:10px 40px;" onclick="stopScanner()">Zrušit</button>
-        </div>
-        <canvas id="capture-canvas" style="display:none;"></canvas>
+        <span class="section-title">Historie jízd</span>
+        <div id="history-list"></div>
+        <button onclick="clearHistory()" style="background:none; border:none; color:var(--text-secondary); width:100%; margin-top:15px; text-decoration:underline; font-size:12px;">Smazat historii</button>
     </div>
 
     <script>
-        let historyData = JSON.parse(localStorage.getItem('teslaHistory')) || [];
-        let worker = null;
-        let isScanning = false;
+        let mode = 'EV'; 
+        let historyData = JSON.parse(localStorage.getItem('carHistory')) || [];
+        let drafts = { 'EV': { km: '', main: '', time: '', speed: '' }, 'ICE': { km: '', main: '', time: '', speed: '' } };
 
-        async function init() {
-            document.getElementById('kwh-price').value = localStorage.getItem('teslaPrice') || "6.50";
+        function init() {
+            const price = localStorage.getItem(mode + '_price') || (mode === 'EV' ? "6.50" : "38.50");
+            document.getElementById('unit-price').value = price;
+            
+            document.getElementById('input-km').value = drafts[mode].km;
+            document.getElementById('input-main').value = drafts[mode].main;
+            document.getElementById('input-time').value = drafts[mode].time;
+            document.getElementById('input-speed').value = drafts[mode].speed;
+
             updateUI();
-            
-            try {
-                document.getElementById('status-msg').innerText = "Načítám skener...";
-                worker = await Tesseract.createWorker('eng', 1, {
-                    langPath: 'https://tessdata.projectnaptha.com/4.0.0_best' // Kvalitnější model
-                });
-                // WHITELIST: Povolíme jen znaky, které se v Tesle vyskytují
-                await worker.setParameters({
-                    tessedit_char_whitelist: '0123456789.,kmwh'
-                });
-                document.getElementById('status-msg').innerText = "Skener připraven ✅";
-            } catch (e) {
-                document.getElementById('status-msg').innerText = "Chyba načítání.";
+            calculate();
+        }
+
+        function toggleMode() {
+            drafts[mode].km = document.getElementById('input-km').value;
+            drafts[mode].main = document.getElementById('input-main').value;
+            drafts[mode].time = document.getElementById('input-time').value;
+            drafts[mode].speed = document.getElementById('input-speed').value;
+
+            mode = (mode === 'EV') ? 'ICE' : 'EV';
+            const body = document.getElementById('main-body');
+            const img = document.getElementById('car-img');
+            const title = document.getElementById('app-title');
+            const labelCons = document.getElementById('label-consumption');
+            const labelPrice = document.getElementById('label-price');
+            const speedGroup = document.getElementById('speed-group');
+
+            if (mode === 'ICE') {
+                body.className = 'mode-ice';
+                img.src = 'octavia_header.webp';
+                title.innerText = 'Moje Octavia';
+                labelCons.innerText = 'Spotřeba (l/100km)';
+                labelPrice.innerText = 'Cena za 1 litr (Kč)';
+                speedGroup.style.display = 'block';
+            } else {
+                body.className = 'mode-ev';
+                img.src = 'tesla_header.webp';
+                title.innerText = 'Moje Tesla';
+                labelCons.innerText = 'Energie (kWh)';
+                labelPrice.innerText = 'Cena za 1 kWh (Kč)';
+                speedGroup.style.display = 'none';
             }
+            init();
         }
 
-        async function startScanner() {
-            const video = document.getElementById('video-preview');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment", width: { ideal: 1920 } } 
-                });
-                video.srcObject = stream;
-                document.getElementById('scanner-container').style.display = 'flex';
-                isScanning = true;
-                
-                video.onloadedmetadata = () => {
-                    video.play();
-                    scanLoop();
-                };
-            } catch (err) {
-                alert("Kamera nedostupná.");
-            }
+        function calculate() {
+            const km = parseFloat(document.getElementById('input-km').value) || 0;
+            const mainVal = parseFloat(document.getElementById('input-main').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('unit-price').value) || 0;
+            let totalCost = (mode === 'EV') ? (mainVal * unitPrice) : ((mainVal / 100) * km * unitPrice);
+            const perKm = km > 0 ? (totalCost / km) : 0;
+            document.getElementById('preview-cost').innerText = totalCost.toFixed(2) + ' Kč';
+            document.getElementById('preview-per-km').innerText = perKm.toFixed(2) + ' Kč / km';
         }
 
-        function stopScanner() {
-            isScanning = false;
-            const video = document.getElementById('video-preview');
-            if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
-            document.getElementById('scanner-container').style.display = 'none';
+        function saveSettings() {
+            localStorage.setItem(mode + '_price', document.getElementById('unit-price').value);
+            calculate();
         }
 
-        async function scanLoop() {
-            if (!isScanning || !worker) return;
+        function saveTrip() {
+            const km = document.getElementById('input-km').value;
+            const mainVal = document.getElementById('input-main').value;
+            if (!km || !mainVal) return alert("Vyplňte údaje!");
 
-            const video = document.getElementById('video-preview');
-            const canvas = document.getElementById('capture-canvas');
-            const ctx = canvas.getContext('2d');
-
-            // CÍLENÝ VÝŘEZ (ROI): Skenujeme jen 50% šířky a 25% výšky ve středu
-            const cropW = video.videoWidth * 0.5;
-            const cropH = video.videoHeight * 0.25;
-            const cropX = video.videoWidth * 0.1;
-            const cropY = video.videoHeight * 0.2;
-
-            canvas.width = cropW;
-            canvas.height = cropH;
-
-            // Nakreslíme jen ten výřez
-            ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-            // ÚPRAVA OBRAZU: Stupně šedi a vysoký kontrast
-            let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let d = imgData.data;
-            for (let i = 0; i < d.length; i += 4) {
-                let g = (d[i] + d[i+1] + d[i+2]) / 3;
-                let v = (g > 100) ? 255 : 0; // Agresivní prahování pro jasný text
-                d[i] = d[i+1] = d[i+2] = v;
-            }
-            ctx.putImageData(imgData, 0, 0);
-
-            try {
-                const { data: { text } } = await worker.recognize(canvas);
-                parseResult(text);
-            } catch (e) { console.error(e); }
-
-            if (isScanning) setTimeout(scanLoop, 600);
-        }
-
-        function parseResult(text) {
-            // Oprava častých chyb (o -> 0)
-            let clean = text.toLowerCase().replace(/o/g, '0').replace(',', '.').replace(/\s+/g, '');
-            document.getElementById('debug-ocr').innerText = `Vidím: ${clean}`;
-
-            const kmMatch = clean.match(/(\d+[.]?\d*)km/);
-            const kwhMatch = clean.match(/(\d+[.]?\d*)kwh/);
-
-            if (kmMatch && kwhMatch) {
-                const km = parseFloat(kmMatch[1]);
-                const kwh = parseFloat(kwhMatch[1]);
-                if (km > 0 && kwh > 0 && km < 1000) { // Pojistka proti nesmyslům
-                    finalize(km, kwh);
-                }
-            }
-        }
-
-        function finalize(km, kwh) {
-            stopScanner();
-            const price = parseFloat(document.getElementById('kwh-price').value) || 0;
-            const cost = (kwh * price).toFixed(2);
-            
+            const now = new Date();
             const trip = {
-                date: new Date().toLocaleDateString('cs-CZ'),
-                time: new Date().getHours() + ":" + String(new Date().getMinutes()).padStart(2, '0'),
-                km, kwh, cost, pricePerUnit: price
+                mode: mode,
+                date: now.toLocaleDateString('cs-CZ') + ' ' + now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0'),
+                km: km,
+                detail: mode === 'EV' ? mainVal + ' kWh' : mainVal + ' l/100km',
+                time: document.getElementById('input-time').value || "--",
+                speed: mode === 'ICE' ? document.getElementById('input-speed').value : null,
+                cost: document.getElementById('preview-cost').innerText,
+                perKm: document.getElementById('preview-per-km').innerText
             };
 
             historyData.unshift(trip);
-            localStorage.setItem('teslaHistory', JSON.stringify(historyData));
-            localStorage.setItem('teslaPrice', price);
-
-            document.getElementById('current-km').innerText = km + " km";
-            document.getElementById('current-kwh').innerText = kwh + " kWh";
-            document.getElementById('current-cost').innerText = cost;
-            updateUI();
+            localStorage.setItem('carHistory', JSON.stringify(historyData));
+            drafts[mode] = { km: '', main: '', time: '', speed: '' };
+            init();
         }
 
         function updateUI() {
             const list = document.getElementById('history-list');
-            list.innerHTML = historyData.length === 0 ? "Žádné jízdy" : "";
-            historyData.forEach(t => {
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
-                    <span style="font-size:12px;">${t.date} ${t.time}</span>
-                    <span style="font-weight:bold; color:var(--tesla-red);">${t.cost} Kč</span>
-                </div>`;
-            });
+            list.innerHTML = historyData.length === 0 ? '<div style="text-align:center;color:gray;padding:10px;">Žádná historie</div>' : historyData.map(t => {
+                const isEV = t.mode === 'EV';
+                const colorClass = isEV ? 'color-ev' : 'color-ice';
+                const speedText = t.speed ? ` • Prům. rychl.: ${t.speed} km/h` : '';
+                
+                return `
+                <div class="history-item">
+                    <div>
+                        <div class="h-sub">${t.date} <span class="mode-label ${colorClass}">[${t.mode}]</span></div>
+                        <div class="h-main">${t.km} km • ${t.detail}</div>
+                        <div class="h-sub">Čas: ${t.time}${speedText}</div>
+                    </div>
+                    <div class="h-right">
+                        <span class="h-cost ${colorClass}">${t.cost}</span>
+                        <div class="h-sub">${t.perKm}</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
         }
 
+        function clearHistory() { if (confirm("Smazat?")) { historyData = []; localStorage.removeItem('carHistory'); updateUI(); } }
         window.onload = init;
     </script>
 </body>
