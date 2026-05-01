@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Car Trip Pro v1.45</title>
+    <title>Car Trip Pro v1.46</title>
 
-    <!-- PWA Instalace a Mobilní nastavení -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="tesla_header.webp">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -93,12 +92,9 @@
     </style>
 
     <script>
-        // Registrace Service Workeru pro instalaci PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW registered'))
-                    .catch(err => console.log('SW registration failed', err));
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
             });
         }
     </script>
@@ -145,7 +141,7 @@
     </div>
 
     <div class="card">
-        <label id="label-price" style="font-size: 13px; color: var(--text-secondary);">Cena za jednotku (Kč)</label>
+        <label id="label-price" style="font-size: 13px; color: var(--text-secondary);">Cena za 1 kWh (Kč)</label>
         <input type="number" id="unit-price" step="0.1" oninput="saveSettings()" style="margin-top:5px;">
     </div>
 
@@ -169,6 +165,10 @@
             document.getElementById('input-time').value = drafts[mode].time;
             document.getElementById('input-speed').value = drafts[mode].speed;
 
+            // Zajištění správného popisku ceny hned při startu
+            const labelPrice = document.getElementById('label-price');
+            labelPrice.innerText = (mode === 'EV') ? 'Cena za 1 kWh (Kč)' : 'Cena za 1 litr (Kč)';
+
             updateUI();
             calculate();
         }
@@ -184,7 +184,6 @@
             const img = document.getElementById('car-img');
             const title = document.getElementById('app-title');
             const labelCons = document.getElementById('label-consumption');
-            const labelPrice = document.getElementById('label-price');
             const speedGroup = document.getElementById('speed-group');
 
             if (mode === 'ICE') {
@@ -192,14 +191,12 @@
                 img.src = 'octavia_header.webp';
                 title.innerText = 'Moje Octavia';
                 labelCons.innerText = 'Spotřeba (l/100km)';
-                labelPrice.innerText = 'Cena za 1 litr (Kč)';
                 speedGroup.style.display = 'block';
             } else {
                 body.className = 'mode-ev';
                 img.src = 'tesla_header.webp';
                 title.innerText = 'Moje Tesla';
                 labelCons.innerText = 'Energie (kWh)';
-                labelPrice.innerText = 'Cena za 1 kWh (Kč)';
                 speedGroup.style.display = 'none';
             }
             init();
@@ -249,7 +246,6 @@
                 const isEV = t.mode === 'EV';
                 const colorClass = isEV ? 'color-ev' : 'color-ice';
                 const speedText = t.speed ? ` • Prům. rychl.: ${t.speed} km/h` : '';
-                
                 return `
                 <div class="history-item">
                     <div>
@@ -261,8 +257,7 @@
                         <span class="h-cost ${colorClass}">${t.cost}</span>
                         <div class="h-sub">${t.perKm}</div>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
 
