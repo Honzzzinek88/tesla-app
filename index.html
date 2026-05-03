@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Car Trip Pro v1.47</title>
+    <title>Car Trip Pro v1.48</title>
 
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="tesla_header.webp">
@@ -32,14 +32,8 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        .vehicle-header { 
-            width: 100%; max-width: 400px; display: flex; justify-content: center; 
-            margin-top: 10px; cursor: pointer;
-        }
-        .vehicle-img { 
-            width: 100%; height: auto; border-radius: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s;
-        }
+        .vehicle-header { width: 100%; max-width: 400px; display: flex; justify-content: center; margin-top: 10px; cursor: pointer; }
+        .vehicle-img { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s; }
         .vehicle-header:active .vehicle-img { transform: scale(0.96); }
 
         h1 { font-size: 24px; font-weight: 700; margin: 15px 0; }
@@ -60,34 +54,33 @@
             outline: none; transition: border-color 0.2s;
         }
 
-        .color-ev { color: var(--tesla-red) !important; }
-        .color-ice { color: var(--skoda-green) !important; }
-
+        /* Dynamické barvy */
         .mode-ev .accent-color { color: var(--tesla-red); }
         .mode-ev .button { background: var(--tesla-red); }
-        .mode-ev input:focus { border-color: var(--tesla-red); }
-
         .mode-ice .accent-color { color: var(--skoda-green); }
         .mode-ice .button { background: var(--skoda-green); }
-        .mode-ice input:focus { border-color: var(--skoda-green); }
 
         .button {
             width: 100%; color: white; border: none; border-radius: 12px; 
             padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer;
         }
 
-        .result-preview { text-align: center; margin: 15px 0; padding-top: 10px; border-top: 1px solid var(--separator); }
-        .total-price { font-size: 42px; font-weight: 800; line-height: 1; }
-        .sub-preview { font-size: 14px; font-weight: 600; margin-top: 5px; }
+        /* LOCK MODAL */
+        #lock-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            flex-direction: column; justify-content: center; align-items: center; color: white;
+            padding: 20px; text-align: center; backdrop-filter: blur(5px);
+        }
 
         .history-item { 
             padding: 12px 0; border-bottom: 1px solid var(--separator); 
             display: flex; justify-content: space-between; align-items: center;
         }
-        .h-main { font-weight: 600; font-size: 15px; }
         .h-sub { font-size: 11px; color: var(--text-secondary); }
-        .h-right { text-align: right; }
         .h-cost { font-weight: 800; font-size: 16px; }
+        .color-ev { color: var(--tesla-red) !important; }
+        .color-ice { color: var(--skoda-green) !important; }
         .mode-label { font-weight: 800; font-size: 10px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; border: 1px solid currentColor; }
     </style>
 
@@ -100,6 +93,13 @@
     </script>
 </head>
 <body class="mode-ev" id="main-body">
+
+    <div id="lock-screen">
+        <h2 style="color: var(--tesla-red);">Limit dosažen</h2>
+        <p>Pro další výpočty zadejte bezpečnostní PIN:</p>
+        <input type="number" id="pin-input" inputmode="numeric" style="width: 250px; text-align: center; margin-bottom: 20px; font-size: 24px; letter-spacing: 5px;">
+        <button class="button" onclick="checkPin()" style="background: white; color: black; width: 250px;">ODEMKNOUT</button>
+    </div>
 
     <div class="vehicle-header" onclick="toggleMode()">
         <img src="tesla_header.webp" id="car-img" alt="Auto" class="vehicle-img">
@@ -132,9 +132,9 @@
             </div>
         </div>
 
-        <div class="result-preview">
-            <div class="total-price accent-color" id="preview-cost">0.00 Kč</div>
-            <div id="preview-per-km" class="sub-preview">0.00 Kč / km</div>
+        <div style="text-align: center; margin: 15px 0; border-top: 1px solid var(--separator); padding-top: 10px;">
+            <div class="total-price accent-color" id="preview-cost" style="font-size: 42px; font-weight: 800;">0.00 Kč</div>
+            <div id="preview-per-km" style="font-size: 14px; font-weight: 600;">0.00 Kč / km</div>
         </div>
 
         <button class="button" onclick="saveTrip()">ULOŽIT JÍZDU</button>
@@ -155,6 +155,10 @@
         let mode = 'EV'; 
         let historyData = JSON.parse(localStorage.getItem('carHistory')) || [];
         let drafts = { 'EV': { km: '', main: '', time: '', speed: '' }, 'ICE': { km: '', main: '', time: '', speed: '' } };
+        
+        // --- OCHRANA ---
+        let saveCount = parseInt(localStorage.getItem('saveCount')) || 0;
+        const SECRET_PIN = "12345678987654321";
 
         function init() {
             const price = localStorage.getItem(mode + '_price') || (mode === 'EV' ? "6.50" : "38.50");
@@ -165,11 +169,27 @@
             document.getElementById('input-time').value = drafts[mode].time;
             document.getElementById('input-speed').value = drafts[mode].speed;
 
-            const labelPrice = document.getElementById('label-price');
-            labelPrice.innerText = (mode === 'EV') ? 'Cena za 1 kWh (Kč)' : 'Cena za 1 litr (Kč)';
+            document.getElementById('label-price').innerText = (mode === 'EV') ? 'Cena za 1 kWh (Kč)' : 'Cena za 1 litr (Kč)';
+
+            // Zkontrolujeme, jestli už není zamčeno při startu
+            if (saveCount >= 3) {
+                document.getElementById('lock-screen').style.display = 'flex';
+            }
 
             updateUI();
             calculate();
+        }
+
+        function checkPin() {
+            const entered = document.getElementById('pin-input').value;
+            if (entered === SECRET_PIN) {
+                saveCount = 0;
+                localStorage.setItem('saveCount', '0');
+                document.getElementById('lock-screen').style.display = 'none';
+                document.getElementById('pin-input').value = "";
+            } else {
+                alert("Špatný PIN kód!");
+            }
         }
 
         function toggleMode() {
@@ -221,14 +241,17 @@
             const mainVal = document.getElementById('input-main').value;
             if (!km || !mainVal) return alert("Vyplňte údaje!");
 
+            // Inkrementace počítadla uložení
+            saveCount++;
+            localStorage.setItem('saveCount', saveCount);
+
             const now = new Date();
-            const tripTime = document.getElementById('input-time').value;
             const trip = {
                 mode: mode,
                 date: now.toLocaleDateString('cs-CZ') + ' ' + now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0'),
                 km: km,
                 detail: mode === 'EV' ? mainVal + ' kWh' : mainVal + ' l/100km',
-                time: tripTime ? tripTime + ' min' : '--',
+                time: document.getElementById('input-time').value ? document.getElementById('input-time').value + ' min' : '--',
                 speed: mode === 'ICE' ? document.getElementById('input-speed').value : null,
                 cost: document.getElementById('preview-cost').innerText,
                 perKm: document.getElementById('preview-per-km').innerText
@@ -237,21 +260,25 @@
             historyData.unshift(trip);
             localStorage.setItem('carHistory', JSON.stringify(historyData));
             drafts[mode] = { km: '', main: '', time: '', speed: '' };
-            init();
+            
+            init(); // Překreslí UI a vyčistí pole
+
+            // Pokud jsme dosáhli 3 uložení, zamkneme
+            if (saveCount >= 3) {
+                document.getElementById('lock-screen').style.display = 'flex';
+            }
         }
 
         function updateUI() {
             const list = document.getElementById('history-list');
             list.innerHTML = historyData.length === 0 ? '<div style="text-align:center;color:gray;padding:10px;">Žádná historie</div>' : historyData.map(t => {
-                const isEV = t.mode === 'EV';
-                const colorClass = isEV ? 'color-ev' : 'color-ice';
-                const speedText = t.speed ? ` • Prům. rychl.: ${t.speed} km/h` : '';
+                const colorClass = t.mode === 'EV' ? 'color-ev' : 'color-ice';
                 return `
                 <div class="history-item">
                     <div>
                         <div class="h-sub">${t.date} <span class="mode-label ${colorClass}">[${t.mode}]</span></div>
                         <div class="h-main">${t.km} km • ${t.detail}</div>
-                        <div class="h-sub">Čas: ${t.time}${speedText}</div>
+                        <div class="h-sub">Čas: ${t.time}${t.speed ? ' • Prům. rychl.: ' + t.speed + ' km/h' : ''}</div>
                     </div>
                     <div class="h-right">
                         <span class="h-cost ${colorClass}">${t.cost}</span>
